@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 
-/// QUAD
+/// Quick UDP File Sharing
 #[derive(Debug, Parser)]
 #[command(
     author,
