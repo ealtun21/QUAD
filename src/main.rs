@@ -16,16 +16,13 @@ use time::{Date, PrimitiveDateTime, Time};
 use crate::safe_read_write::{SafeReadWrite, Wrap};
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    if args.is_empty() {
-        panic!("no args");
-    }
-    match args.get(1).unwrap().as_str() {
+    let args: Vec<String> = std::env::args().take(1).collect();
+    match args.get(1).unwrap_or(&"version".to_owned()).as_str() {
         "helper" => helper(&args),
         "sender" => sender(&args, |_| {}),
         "receiver" => receiver(&args, |_| {}),
-        "version" => println!("QFT version: {}", env!("CARGO_PKG_VERSION")),
-        _ => print_args(&args),
+        "version" => println!("QUAD version: {}", env!("CARGO_PKG_VERSION")),
+        _ => (),
     }
 }
 
@@ -135,10 +132,7 @@ pub fn sender<F: Fn(f32)>(args: &[String], on_progress: F) {
     let mut buffer: Vec<u8> = vec![0; bitrate as usize];
 
     // Open file for reading
-    let file_path = args.get(4).unwrap_or_else(|| {
-        print_args(args);
-        panic!("File path argument is missing")
-    });
+    let file_path = &args[4];
     let mut file = File::open(file_path).expect("Unable to open file for reading");
 
     // Seek to start position if not zero
@@ -211,10 +205,7 @@ pub fn receiver<F: Fn(f32)>(args: &[String], on_progress: F) {
     let buffer: Vec<u8> = vec![0; bitrate as usize];
 
     // Open file for writing
-    let file_path = args.get(4).unwrap_or_else(|| {
-        print_args(args);
-        panic!("File path argument is missing")
-    });
+    let file_path = &args[4];
     let mut file = OpenOptions::new()
         .truncate(false)
         .write(true)
@@ -289,22 +280,13 @@ fn holepunch(args: &[String]) -> UdpSocket {
     let holepunch = UdpSocket::bind(bind_addr).expect("Unable to create socket");
 
     // Connect to helper
-    let helper_address = args.get(2).unwrap_or_else(|| {
-        print_args(args);
-        panic!("Expected helper address as third argument")
-    });
+    let helper_address = &args[2];
     holepunch
         .connect(helper_address)
         .expect("Unable to connect to helper");
 
     // Send data to helper
-    let data = args
-        .get(3)
-        .unwrap_or_else(|| {
-            print_args(args);
-            panic!("Expected data as fourth argument")
-        })
-        .as_bytes();
+    let data = args[3].as_bytes();
     let mut buf = [0_u8; 200];
     buf[..data.len().min(200)].copy_from_slice(&data[..data.len().min(200)]);
     holepunch.send(&buf).expect("Unable to talk to helper");
@@ -364,19 +346,6 @@ fn holepunch(args: &[String]) -> UdpSocket {
 
     println!("Holepunch and connection successful.");
     holepunch
-}
-
-fn print_args(args: &[String]) {
-    let f = args.get(0).unwrap();
-    println!(
-        "No arguments. Needed: \n\
-         | {} helper <bind-port>\n\
-         | {} sender <helper-address>:<helper-port> <phrase> <filename> [bitrate] [skip]\n\
-         | {} receiver <helper-address>:<helper-port> <phrase> <filename> [bitrate] [skip]\n\
-         | {} version\n",
-        f, f, f, f
-    );
-    panic!("No arguments");
 }
 
 pub fn unix_millis() -> u64 {
