@@ -13,40 +13,40 @@ use std::{
 };
 
 use clap::Parser;
-use cli::Quad;
+use cli::QuardArgs;
 
 use crate::safe_read_write::SafeReadWrite;
 
 fn main() {
-    let quad = Quad::parse();
+    let quad = QuardArgs::parse();
 
-    use cli::Commands::*;
-    match quad.command {
-        Helper { port } => helper(port),
-        Sender {
+    use cli::QuadType::*;
+    match quad.quad_type {
+        Helper(cli::Helper { port }) => helper(port),
+        Sender(cli::Sender {
             bitrate,
             start_position,
             input,
             address,
-            unique_identifier,
-        } => sender(
+            identifier,
+        }) => sender(
             bitrate,
             start_position,
             input,
-            holepunch(address, unique_identifier.as_bytes()),
+            holepunch(address, identifier.as_bytes()),
             |_| {},
         ),
-        Receiver {
+        Receiver(cli::Receiver {
             bitrate,
             start_position,
             output,
             address,
-            unique_identifier,
-        } => receiver(
+            identifier,
+        }) => receiver(
             bitrate,
             start_position,
             output,
-            holepunch(address, unique_identifier.as_bytes()),
+            holepunch(address, identifier.as_bytes()),
             |_| {},
         ),
     }
@@ -217,7 +217,7 @@ pub fn receiver<F: Fn(f32)>(
 
         // Display progress
         if (total_received % (bitrate * 20)) < bitrate {
-            print!("\r\x1b[KReceived {} bytes;", total_received);
+            print!("\r\x1b[KReceived {} bytes", total_received);
             stdout().flush().unwrap();
         }
 
