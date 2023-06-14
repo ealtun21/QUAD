@@ -30,11 +30,11 @@ pub enum Commands {
 
         /// Unique identifier
         #[arg(short, long)]
-        data: String,
+        unique_identifier: String,
 
         /// File path
         #[arg(short, long)]
-        file_path: String,
+        input: String,
 
         /// Bitrate (lower = more reliable, higher = faster)
         #[clap(default_value = "256")]
@@ -55,11 +55,11 @@ pub enum Commands {
 
         /// Unique identifier
         #[arg(short, long)]
-        data: String,
+        unique_identifier: String,
 
         /// File path
         #[arg(short, long)]
-        file_path: String,
+        output: String,
 
         /// Bitrate (lower = more reliable, higher = faster)
         #[arg(short, long)]
