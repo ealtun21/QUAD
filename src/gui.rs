@@ -43,7 +43,7 @@ unsafe impl<T> Send for Ref<T> {}
 fn wrap<T: Into<Control>>(ui: &UI, s: &str, c: T) -> Group {
     let mut g = Group::new(ui, s);
     g.set_child(ui, c);
-    return g;
+    g
 }
 
 pub fn gui() -> Result<(), iui::UIError> {
@@ -101,13 +101,10 @@ pub fn gui() -> Result<(), iui::UIError> {
                 .open_file(uib.get())
                 .map(|x| x.into_os_string().into_string().unwrap())
         };
-        match r {
-            Some(path) => {
-                bb.get()
-                    .set_text(uib.get(), format!("Select a file ({})", &path).as_str());
-                *pb.get() = path;
-            }
-            None => (),
+        if let Some(path) = r {
+            bb.get()
+                .set_text(uib.get(), format!("Select a file ({})", &path).as_str());
+            *pb.get() = path;
         }
     });
     vbox.append(
@@ -130,7 +127,7 @@ pub fn gui() -> Result<(), iui::UIError> {
     speed_box.on_changed(&ui, move |val| {
         sb.get().set_value(
             uib.get(),
-            u16::from_str_radix(val.as_str(), 10).unwrap_or(256) as i32,
+            val.as_str().parse::<u16>().unwrap_or(256) as i32,
         );
     });
     speed_slider.on_changed(&ui, move |val| {
@@ -204,7 +201,7 @@ pub fn gui() -> Result<(), iui::UIError> {
                         let uib = uib1.clone();
                         let barb = barb1.clone();
                         uib1.get().queue_main(move || {
-                            let percentage = (f * 100 as f32) as i32;
+                            let percentage = (f * 100_f32) as i32;
                             if percentage != *lpb1.get() {
                                 barb.get().set_value(
                                     uib.get(),
@@ -240,7 +237,7 @@ pub fn gui() -> Result<(), iui::UIError> {
                         let uib = uib1.clone();
                         let barb = barb1.clone();
                         uib1.get().queue_main(move || {
-                            let percentage = (f * 100 as f32) as i32;
+                            let percentage = (f * 100_f32) as i32;
                             if percentage != *lpb1.get() {
                                 barb.get().set_value(
                                     uib.get(),
@@ -310,5 +307,5 @@ pub fn gui() -> Result<(), iui::UIError> {
     ui.event_loop().run(&ui);
     println!("GUI done");
 
-    return Ok(());
+    Ok(())
 }
