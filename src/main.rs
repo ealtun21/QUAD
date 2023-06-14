@@ -24,11 +24,11 @@ fn main() {
     }
 }
 
-pub fn helper(args: &Vec<String>) {
+pub fn helper(args: &[String]) {
     let bind_addr = ("0.0.0.0", args[2].parse::<u16>().unwrap());
     let mut map: HashMap<[u8; 200], SocketAddr> = HashMap::new();
     let socket = UdpSocket::bind(bind_addr).unwrap();
-    let mut buf = [0 as u8; 200];
+    let mut buf = [0_u8; 200];
     loop {
         let (l, addr) = socket.recv_from(&mut buf).unwrap();
         if l != 200 {
@@ -36,7 +36,7 @@ pub fn helper(args: &Vec<String>) {
         }
         if let Some(other) = map.get(&buf) {
             let addr_buf = convert_addr_to_byte_array(&addr);
-            let other_buf = convert_addr_to_byte_array(&other);
+            let other_buf = convert_addr_to_byte_array(other);
             if socket.send_to(&addr_buf, other).is_ok() && socket.send_to(&other_buf, addr).is_ok()
             {
                 println!("Helped {} and {}! :D", addr, other);
@@ -49,11 +49,10 @@ pub fn helper(args: &Vec<String>) {
 }
 
 fn convert_addr_to_byte_array(addr: &SocketAddr) -> [u8; 200] {
-    let mut addr_buf = [0 as u8; 200];
+    let mut addr_buf = [0_u8; 200];
     let addr_as_bytes = addr.to_string().into_bytes();
-    for i in 0..addr_as_bytes.len().min(200) {
-        addr_buf[i] = addr_as_bytes[i];
-    }
+    addr_buf[..addr_as_bytes.len().min(200)]
+        .copy_from_slice(&addr_as_bytes[..addr_as_bytes.len().min(200)]);
     addr_buf
 }
 
