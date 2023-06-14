@@ -16,7 +16,7 @@ use time::{Date, PrimitiveDateTime, Time};
 use crate::safe_read_write::{SafeReadWrite, Wrap};
 
 fn main() {
-    let args: Vec<String> = std::env::args().take(1).collect();
+    let args: Vec<String> = std::env::args().collect();
     match args.get(1).unwrap_or(&"version".to_owned()).as_str() {
         "helper" => helper(&args),
         "sender" => sender(&args, |_| {}),
