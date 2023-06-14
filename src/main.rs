@@ -26,27 +26,20 @@ fn main() {
     }
 }
 
-pub fn helper(args: &[String]) {
-    // Parse the port number from command line arguments
-    let bind_port = args
-        .get(2)
-        .and_then(|s| s.parse::<u16>().ok())
-        .expect("Invalid port argument: must be an integer");
+pub fn helper(args: &Vec<String>) {
+    let bind_addr = (
+        "0.0.0.0",
+        u16::from_str_radix(&args[2], 10).expect("Invalid port: must be an integer"),
+    );
 
-    let bind_address = ("0.0.0.0", bind_port);
+    let mut map: HashMap<[u8; 200], SocketAddr> = HashMap::new();
+    let listener = UdpSocket::bind(&bind_addr).expect("Unable to create socket");
 
-    // Create a HashMap to store addresses
-    let mut address_map: HashMap<[u8; 200], SocketAddr> = HashMap::new();
-
-    // Create and bind UDP socket
-    let udp_socket = UdpSocket::bind(bind_address).expect("Unable to create UDP socket");
-
-    let mut buffer = [0_u8; 200];
+    let mut buf = [0 as u8; 200];
     let mut last_log_time = unix_millis();
-    let mut connections_since_log = 0;
+    let mut amount_since_log = 0;
 
-    // Open a log file
-    let mut log_file = OpenOptions::new()
+    let mut helper_log = OpenOptions::new()
         .create(true)
         .write(true)
         .append(true)
@@ -54,65 +47,75 @@ pub fn helper(args: &[String]) {
         .expect("Unable to create helper log");
 
     loop {
-        let (data_size, src_addr) = udp_socket
-            .recv_from(&mut buffer)
-            .expect("Error reading from UDP socket");
-
-        // Only handle packages of size 200
-        if data_size != 200 {
+        let (size, addr) = listener.recv_from(&mut buf).expect("Read error");
+        if size != 200 {
             continue;
         }
 
-        if let std::collections::hash_map::Entry::Vacant(entry) = address_map.entry(buffer) {
-            // If this address is not yet known, store it
-            entry.insert(src_addr);
-        } else {
-            // If we already know this address, we have a connection
-            let dest_addr = address_map.get(&buffer).unwrap();
+        match map.get(&buf) {
+            Some(other) => {
+                let addr_buf = create_addr_buf(&addr);
+                let other_buf = create_addr_buf(&other);
 
-            let src_info = format_socket_info(&src_addr);
-            let dest_info = format_socket_info(dest_addr);
-
-            if udp_socket.send_to(&src_info, dest_addr).is_ok()
-                && udp_socket.send_to(&dest_info, src_addr).is_ok()
-            {
-                // If information exchange was successful, log the connection
-                println!("Helped {} and {}! :D", src_addr, dest_addr);
-                connections_since_log += 1;
-
-                // If it's been more than 10 seconds since last log, write to the log file
-                if unix_millis() - last_log_time > 10000 {
-                    let d = PrimitiveDateTime::new(
-                        Date::from_calendar_date(1970, time::Month::January, 1).unwrap(),
-                        Time::MIDNIGHT,
-                    ) + Duration::from_millis(unix_millis());
-                    log_file
-                        .write_all(
-                            format!(
-                                "{} | {} {}>\n",
-                                d,
-                                connections_since_log,
-                                connections_since_log * Wrap("=")
-                            )
-                            .as_bytes(),
-                        )
-                        .expect("Error writing to log");
-                    log_file.flush().expect("Error writing to log");
-
-                    last_log_time = unix_millis();
-                    connections_since_log = 0;
+                if listener.send_to(&addr_buf, other).is_ok()
+                    && listener.send_to(&other_buf, addr).is_ok()
+                {
+                    log_success(
+                        &mut helper_log,
+                        &addr,
+                        &other,
+                        &mut last_log_time,
+                        &mut amount_since_log,
+                    );
                 }
+
+                map.remove(&buf);
             }
-            address_map.remove(&buffer);
+            None => {
+                map.insert(buf, addr);
+            }
         }
     }
 }
 
-fn format_socket_info(addr: &SocketAddr) -> [u8; 200] {
-    let mut info = [0_u8; 200];
-    let bytes = addr.to_string().bytes().collect::<Vec<u8>>();
-    info[..bytes.len().min(200)].copy_from_slice(&bytes[..bytes.len().min(200)]);
-    info
+fn create_addr_buf(addr: &SocketAddr) -> [u8; 200] {
+    let mut buf = [0 as u8; 200];
+    let binding = addr.to_string();
+    let addr_as_bytes: &[u8] = binding.as_bytes();
+    buf[..addr_as_bytes.len().min(200)].copy_from_slice(addr_as_bytes);
+    buf
+}
+
+fn log_success(
+    log: &mut File,
+    addr: &SocketAddr,
+    other: &SocketAddr,
+    last_log_time: &mut u64,
+    amount_since_log: &mut u32,
+) {
+    println!("Helped {} and {}! :D", addr, other);
+    *amount_since_log += 1;
+
+    if unix_millis() - *last_log_time > 10000 {
+        let date_time = PrimitiveDateTime::new(
+            Date::from_calendar_date(1970, time::Month::January, 1).unwrap(),
+            Time::MIDNIGHT,
+        ) + Duration::from_millis(unix_millis());
+
+        let log_message = format!(
+            "{} | {} {}>\n",
+            date_time,
+            *amount_since_log,
+            "=".repeat(*amount_since_log as usize)
+        );
+
+        log.write(log_message.as_bytes())
+            .expect("Error writing to log");
+
+        log.flush().expect("Error flushing the log");
+        *last_log_time = unix_millis();
+        *amount_since_log = 0;
+    }
 }
 
 pub fn sender<F: Fn(f32)>(args: &[String], on_progress: F) {
