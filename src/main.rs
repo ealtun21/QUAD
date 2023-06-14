@@ -1,3 +1,4 @@
+mod cli;
 mod safe_read_write;
 
 use std::{
@@ -11,21 +12,48 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use clap::Parser;
+use cli::Quad;
+
 use crate::safe_read_write::SafeReadWrite;
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    match args.get(1).unwrap_or(&"version".to_owned()).as_str() {
-        "helper" => helper(&args),
-        "sender" => sender(&args, |_| {}),
-        "receiver" => receiver(&args, |_| {}),
-        "version" => println!("QUAD version: {}", env!("CARGO_PKG_VERSION")),
-        _ => (),
+    let quad = Quad::parse();
+
+    use cli::Commands::*;
+    match quad.command {
+        Helper { port } => helper(port),
+        Sender {
+            bitrate,
+            start_position,
+            file_path,
+            address,
+            data,
+        } => sender(
+            bitrate,
+            start_position,
+            file_path,
+            holepunch(address, data.as_bytes()),
+            |_| {},
+        ),
+        Receiver {
+            bitrate,
+            start_position,
+            file_path,
+            address,
+            data,
+        } => receiver(
+            bitrate,
+            start_position,
+            file_path,
+            holepunch(address, data.as_bytes()),
+            |_| {},
+        ),
     }
 }
 
-pub fn helper(args: &[String]) {
-    let bind_addr = ("0.0.0.0", args[2].parse::<u16>().unwrap());
+pub fn helper(port: u16) {
+    let bind_addr: (&str, u16) = ("0.0.0.0", port);
     let mut map: HashMap<[u8; 200], SocketAddr> = HashMap::new();
     let socket = UdpSocket::bind(bind_addr).unwrap();
     let mut buf = [0_u8; 200];
@@ -56,24 +84,17 @@ fn convert_addr_to_byte_array(addr: &SocketAddr) -> [u8; 200] {
     addr_buf
 }
 
-pub fn sender<F: Fn(f32)>(args: &[String], on_progress: F) {
-    // Establish connection
-    let connection = holepunch(args);
-
-    // Parse bitrate argument or set to default of 256
-    let bitrate = args
-        .get(5)
-        .and_then(|s| s.parse::<u64>().ok())
-        .unwrap_or(256);
-
-    // Parse begin argument or set to default of 0
-    let start_position = args.get(6).and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
-
+pub fn sender<F: Fn(f32)>(
+    bitrate: u64,
+    start_position: u64,
+    file_path: String,
+    connection: UdpSocket,
+    on_progress: F,
+) {
     // Initialize buffer with size of bitrate
     let mut buffer: Vec<u8> = vec![0; bitrate as usize];
 
     // Open file for reading
-    let file_path = &args[4];
     let mut file = File::open(file_path).expect("Unable to open file for reading");
 
     // Seek to start position if not zero
@@ -102,7 +123,7 @@ pub fn sender<F: Fn(f32)>(args: &[String], on_progress: F) {
         let read_size = file.read(&mut buffer).expect("Error reading file");
 
         // If end of file is reached and not in stream mode, end the transfer
-        if read_size == 0 && env::var("QFT_STREAM").is_err() {
+        if read_size == 0 && env::var("QUAD_STREAM").is_err() {
             println!("\nTransfer complete. Thank you!");
             safe_rw.end();
             return;
@@ -129,24 +150,17 @@ pub fn sender<F: Fn(f32)>(args: &[String], on_progress: F) {
     }
 }
 
-pub fn receiver<F: Fn(f32)>(args: &[String], on_progress: F) {
-    // Establish connection
-    let connection = holepunch(args);
-
-    // Parse bitrate argument or set to default of 256
-    let bitrate = args
-        .get(5)
-        .and_then(|s| s.parse::<u64>().ok())
-        .unwrap_or(256);
-
-    // Parse begin argument or set to default of 0
-    let start_position = args.get(6).and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
-
+pub fn receiver<F: Fn(f32)>(
+    bitrate: u64,
+    start_position: u64,
+    file_path: String,
+    connection: UdpSocket,
+    on_progress: F,
+) {
     // Initialize buffer with size of bitrate
     let buffer: Vec<u8> = vec![0; bitrate as usize];
 
     // Open file for writing
-    let file_path = &args[4];
     let mut file = OpenOptions::new()
         .truncate(false)
         .write(true)
@@ -215,19 +229,17 @@ pub fn receiver<F: Fn(f32)>(args: &[String], on_progress: F) {
     }
 }
 
-fn holepunch(args: &[String]) -> UdpSocket {
+fn holepunch(helper_address: String, data: &[u8]) -> UdpSocket {
     // Initialize socket
     let bind_addr = (Ipv4Addr::from(0_u32), 0);
     let holepunch = UdpSocket::bind(bind_addr).expect("Unable to create socket");
 
     // Connect to helper
-    let helper_address = &args[2];
     holepunch
         .connect(helper_address)
         .expect("Unable to connect to helper");
 
     // Send data to helper
-    let data = args[3].as_bytes();
     let mut buf = [0_u8; 200];
     buf[..data.len().min(200)].copy_from_slice(&data[..data.len().min(200)]);
     holepunch.send(&buf).expect("Unable to talk to helper");
