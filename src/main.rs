@@ -23,7 +23,7 @@ fn main() {
     use cli::QuadType::*;
     match quad.quad_type {
         Helper(cli::Helper { port }) => helper(port),
-        Sender(cli::Sender {
+        Send(cli::Sender {
             bitrate,
             start_position,
             input,
@@ -36,7 +36,7 @@ fn main() {
             holepunch(address, identifier.as_bytes()),
             |_| {},
         ),
-        Receiver(cli::Receiver {
+        Receive(cli::Receiver {
             bitrate,
             start_position,
             output,

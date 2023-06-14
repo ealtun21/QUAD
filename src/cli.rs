@@ -18,9 +18,9 @@ pub enum QuadType {
     /// The server-mode of QUAD to be able to holepunch NAT.
     Helper(Helper),
     /// The client-mode of QUAD to send files p2p
-    Sender(Sender),
+    Send(Sender),
     /// The client-mode of QUAD to receiver files p2p
-    Receiver(Receiver),
+    Receive(Receiver),
 }
 
 #[derive(Debug, Args)]
