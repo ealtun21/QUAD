@@ -39,14 +39,17 @@ pub struct Sender {
 
     /// URL to the helper
     #[clap(default_value = "nyverin.com:4277")]
+    #[arg(short, long)]
     pub address: String,
 
     /// Bitrate (lower = more reliable, higher = faster)
     #[clap(default_value = "256")]
+    #[arg(short, long)]
     pub bitrate: u64,
 
     /// Start position
     #[clap(default_value = "0")]
+    #[arg(short, long)]
     pub start_position: u64,
 }
 
@@ -60,13 +63,16 @@ pub struct Receiver {
 
     /// URL to the helper
     #[clap(default_value = "nyverin.com:4277")]
+    #[arg(short, long)]
     pub address: String,
 
     /// Bitrate (lower = more reliable, higher = faster)
     #[clap(default_value = "256")]
+    #[arg(short, long)]
     pub bitrate: u64,
 
     /// Start position
     #[clap(default_value = "0")]
+    #[arg(short, long)]
     pub start_position: u64,
 }
