@@ -1,5 +1,3 @@
-mod gui;
-
 use std::{
     collections::HashMap,
     env,
@@ -275,12 +273,6 @@ fn main() {
     if args.is_empty() {
         panic!("no args");
     }
-    if args.len() == 1 {
-        match gui::gui() {
-            Ok(_) => (),
-            Err(_) => print_args(&args),
-        }
-    }
     match args
         .get(1)
         .unwrap() // checked in previous if-statement
@@ -289,7 +281,6 @@ fn main() {
         "helper" => helper(&args),
         "sender" => sender(&args, |_| {}),
         "receiver" => receiver(&args, |_| {}),
-        "gui" => gui::gui().expect("can't use gui"),
         "version" => println!("QFT version: {}", env!("CARGO_PKG_VERSION")),
         _ => print_args(&args),
     }
@@ -596,9 +587,8 @@ fn print_args(args: &[String]) {
          | {} helper <bind-port>\n\
          | {} sender <helper-address>:<helper-port> <phrase> <filename> [bitrate] [skip]\n\
          | {} receiver <helper-address>:<helper-port> <phrase> <filename> [bitrate] [skip]\n\
-         | {} gui\n\
          | {} version\n",
-        f, f, f, f, f
+        f, f, f, f
     );
     panic!("No arguments");
 }
