@@ -20,11 +20,7 @@ fn main() {
     if args.is_empty() {
         panic!("no args");
     }
-    match args
-        .get(1)
-        .unwrap() // checked in previous if-statement
-        .as_str()
-    {
+    match args.get(1).unwrap().as_str() {
         "helper" => helper(&args),
         "sender" => sender(&args, |_| {}),
         "receiver" => receiver(&args, |_| {}),

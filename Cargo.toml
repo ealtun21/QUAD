@@ -1,10 +1,10 @@
 [package]
-name = "qft"
-version = "0.5.5"
+name = "quad"
+version = "0.0.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rand = "0"
-time = "0"
+rand = "0.8.5"
+time = "0.3.22"
