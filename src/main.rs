@@ -166,8 +166,6 @@ pub fn sender<F: Fn(f32)>(args: &[String], on_progress: F) {
         .expect("Unable to send file length");
     println!("File length: {}", file_length);
 
-    let mut current_time = unix_millis();
-
     loop {
         // Read data from file
         let read_size = file.read(&mut buffer).expect("Error reading file");
@@ -188,15 +186,8 @@ pub fn sender<F: Fn(f32)>(args: &[String], on_progress: F) {
 
         // Display progress
         if (total_sent % (bitrate * 20)) < bitrate {
-            let elapsed_time = (unix_millis() - current_time).max(1);
-
-            print!(
-                "\r\x1b[KSent {} bytes; Speed: {} kb/s",
-                total_sent,
-                (bitrate as usize * 20) / elapsed_time as usize
-            );
+            print!("\r\x1b[KSent {} bytes", total_sent);
             stdout().flush().unwrap();
-            current_time = unix_millis();
         }
 
         // Update progress
@@ -264,8 +255,6 @@ pub fn receiver<F: Fn(f32)>(args: &[String], on_progress: F) {
 
     println!("File length: {}", file_length);
 
-    let mut current_time = unix_millis();
-
     loop {
         // Read data from sender
         let (received_buf, received_amount) =
@@ -286,15 +275,8 @@ pub fn receiver<F: Fn(f32)>(args: &[String], on_progress: F) {
 
         // Display progress
         if (total_received % (bitrate * 20)) < bitrate {
-            let elapsed_time = (unix_millis() - current_time).max(1);
-
-            print!(
-                "\r\x1b[KReceived {} bytes; Speed: {} kb/s",
-                total_received,
-                (bitrate as usize * 20) / elapsed_time as usize
-            );
+            print!("\r\x1b[KReceived {} bytes;", total_received);
             stdout().flush().unwrap();
-            current_time = unix_millis();
         }
 
         // Update progress
