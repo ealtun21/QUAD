@@ -11,9 +11,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use time::{Date, PrimitiveDateTime, Time};
-
-use crate::safe_read_write::{SafeReadWrite, Wrap};
+use crate::safe_read_write::SafeReadWrite;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -27,71 +25,36 @@ fn main() {
 }
 
 pub fn helper(args: &Vec<String>) {
-    let bind_addr = (
-        "0.0.0.0",
-        u16::from_str_radix(args[2].as_str(), 10).expect("invalid port: must be integer"),
-    );
+    let bind_addr = ("0.0.0.0", args[2].parse::<u16>().unwrap());
     let mut map: HashMap<[u8; 200], SocketAddr> = HashMap::new();
-    let listener = UdpSocket::bind(&bind_addr).expect("unable to create socket");
+    let socket = UdpSocket::bind(bind_addr).unwrap();
     let mut buf = [0 as u8; 200];
-    let mut last_log_time = unix_millis();
-    let mut amount_since_log = 0;
-    let mut helper_log = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .append(true)
-        .open("qft_helper_log.txt")
-        .expect("unable to create helper log");
     loop {
-        let (l, addr) = listener.recv_from(&mut buf).expect("read error");
+        let (l, addr) = socket.recv_from(&mut buf).unwrap();
         if l != 200 {
             continue;
         }
-        if map.contains_key(&buf) {
-            let other = map.get(&buf).unwrap();
-            // we got a connection
-            let mut bytes: &[u8] = addr.to_string().bytes().collect::<Vec<u8>>().leak();
-            let mut addr_buf = [0 as u8; 200];
-            for i in 0..bytes.len().min(200) {
-                addr_buf[i] = bytes[i];
-            }
-            bytes = other.to_string().bytes().collect::<Vec<u8>>().leak();
-            let mut other_buf = [0 as u8; 200];
-            for i in 0..bytes.len().min(200) {
-                other_buf[i] = bytes[i];
-            }
-            if listener.send_to(&addr_buf, other).is_ok()
-                && listener.send_to(&other_buf, addr).is_ok()
+        if let Some(other) = map.get(&buf) {
+            let addr_buf = convert_addr_to_byte_array(&addr);
+            let other_buf = convert_addr_to_byte_array(&other);
+            if socket.send_to(&addr_buf, other).is_ok() && socket.send_to(&other_buf, addr).is_ok()
             {
-                // success!
                 println!("Helped {} and {}! :D", addr, other);
-                amount_since_log += 1;
-                if unix_millis() - last_log_time > 10000 {
-                    let d = PrimitiveDateTime::new(
-                        Date::from_calendar_date(1970, time::Month::January, 1).unwrap(),
-                        Time::MIDNIGHT,
-                    ) + Duration::from_millis(unix_millis());
-                    helper_log
-                        .write(
-                            format!(
-                                "{} | {} {}>\n",
-                                d,
-                                amount_since_log,
-                                amount_since_log * Wrap("=")
-                            )
-                            .as_bytes(),
-                        )
-                        .expect("error writing to log");
-                    helper_log.flush().expect("error writing to log");
-                    last_log_time = unix_millis();
-                    amount_since_log = 0;
-                }
             }
             map.remove(&buf);
         } else {
             map.insert(buf, addr);
         }
     }
+}
+
+fn convert_addr_to_byte_array(addr: &SocketAddr) -> [u8; 200] {
+    let mut addr_buf = [0 as u8; 200];
+    let addr_as_bytes = addr.to_string().into_bytes();
+    for i in 0..addr_as_bytes.len().min(200) {
+        addr_buf[i] = addr_as_bytes[i];
+    }
+    addr_buf
 }
 
 pub fn sender<F: Fn(f32)>(args: &[String], on_progress: F) {

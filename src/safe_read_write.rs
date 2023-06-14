@@ -18,7 +18,7 @@ pub struct SafeReadWrite {
     packet_count_in: u64,
 }
 
-pub struct Wrap<T>(pub T);
+struct Wrap<T>(pub T);
 
 impl Mul<Wrap<&str>> for u64 {
     type Output = String;
