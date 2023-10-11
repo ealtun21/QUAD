@@ -5,7 +5,7 @@ enum SafeReadWritePacket {
     ResendRequest,
     End,
 }
-use std::{collections::HashMap, env, io::Error, net::UdpSocket, ops::Mul, time::Duration};
+use std::{collections::HashMap, env, io::Error, net::UdpSocket, time::Duration};
 
 use SafeReadWritePacket::*;
 
@@ -16,17 +16,6 @@ pub struct SafeReadWrite {
     last_transmitted: HashMap<u16, Vec<u8>>,
     packet_count_out: u64,
     packet_count_in: u64,
-}
-
-struct Wrap<T>(pub T);
-
-impl Mul<Wrap<&str>> for u64 {
-    type Output = String;
-
-    fn mul(self, rhs: Wrap<&str>) -> Self::Output {
-        let strings: Vec<&str> = (0..self).map(|_| rhs.0).collect();
-        strings.join("")
-    }
 }
 
 impl SafeReadWrite {
